@@ -5,9 +5,9 @@
 # Author: Lesley Chapman
 # References: MRF.R - Michael Baron
 ###############################
-source('/Volumes/Lesley_Chapman/American_University/Research_Assistantship/Code/MRF/MRF_preprocessing_fxn.R')
+source('./MRF/MRF_preprocessing_fxn.R')
 library(tidyverse)
-setwd("/Volumes/Lesley_Chapman/American_University/Research_Assistantship/Code")
+setwd("./Code")
  
 # Variables
 Nbins <- 30
