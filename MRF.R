@@ -87,21 +87,26 @@ DeltaY
 Xbin = ceiling((B$X - xx[1])/DeltaX);
 Ybin = ceiling((B$Y - yy[1])/DeltaY);
 Tbin = B$t - min(B$t) + 1;            # standardized time
-Ndays   = max(Tbin);
-Ndays
-## Create a 3-dimensional binary array in (X, Y, Time)
+Ndays   = max(Tbin)
 
+
+## Create a 3-dimensional binary array in (X, Y, Time)
 Events = rep(0, Ndays*Nlocations)
 dim(Events) = c( Ndays, Nbins, Nbins )
 
 IndexEvents = which( Xbin >= 1 & Xbin <= Nbins & Ybin >= 1 & Ybin <= Nbins );
+Xbin
 
-
- Nlocations = Nbins*Nbins;    # The 1st and the last rows and columns are
+Nlocations = Nbins*Nbins;    # The 1st and the last rows and columns are
                               # used only to compete neigborhoods
-Nlocations
+
+
 # The next two functions transform a matrix into two vectors, X and Y
- LocationX = rep(0,Nlocations); LocationY = LocationX;
+LocationX = rep(0,Nlocations)
+LocationY = LocationX
+
+LocationX
+
  for (i in 1:Nbins){ LocationX[(Nbins*(i-1)+1) : (Nbins*i)] = i;
                      LocationY[(Nbins*(i-1)+1) : (Nbins*i)] = seq(1,Nbins);
                   } 
@@ -110,7 +115,7 @@ Nlocations
  i0 = seq(2,(Nbins-1));   # The point itself
  i1 = seq(1,(Nbins-2));   # Its left or bottom neighbor
  i2 = seq(3,Nbins);       # Its right or top neighbor
-
+i2
 
 # Define the 3D array:
 for (i in IndexEvents){ Events[ Tbin[i], Xbin[i], Ybin[i] ] = 1 }
@@ -119,6 +124,7 @@ for (i in IndexEvents){ Events[ Tbin[i], Xbin[i], Ybin[i] ] = 1 }
 # Consider each day, save the logistic regression coefficients
 
 Parameters = matrix(rep(0, Ndays*10),Ndays,10)
+Parameters
 
 for (t in 1:Ndays){
   DayEvents = Events[t,,];       # Nbins*Nbins matrix of 0s and 1s 
@@ -137,7 +143,8 @@ for (t in 1:Ndays){
   Niota   = DayEvents[i0,i0]*(DayEvents[i0,i2]*DayEvents[i2,i0] + DayEvents[i0,i1]*DayEvents[i2,i1] + DayEvents[i1,i0]*DayEvents[i1,i2])
   Nkappa  = DayEvents[i0,i0]*(DayEvents[i0,i2]*DayEvents[i2,i0]*DayEvents[i2,i2] + DayEvents[i0,i1]*DayEvents[i2,i0]*DayEvents[i2,i1] + 
                               DayEvents[i0,i1]*DayEvents[i1,i0]*DayEvents[i1,i1] + DayEvents[i0,i2]*DayEvents[i1,i0]*DayEvents[i1,i2])
-
+  print(DayEvents)
+  
 # Replacing each location with the opposite...
   nalpha  = (1-DayEvents[i0,i0])     
   nlambda = (1-DayEvents[i0,i0])*(DayEvents[i2,i0] + DayEvents[i1,i0])
@@ -172,6 +179,7 @@ for (t in 1:Ndays){
 
   Parameters[t,] = coef(logreg)[2:11]
 }
+  
 
 Alpha  = Parameters[,1]
 Lambda = Parameters[,2]
