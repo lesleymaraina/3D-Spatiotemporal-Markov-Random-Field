@@ -91,7 +91,7 @@ find_deltaValues <- function(file, h, x_cntr, y_cntr){
 #######################################################################
 ### Estimate MRF parameters - 2D king size neighborhood ###############
 #######################################################################
-
+ 
 find_counts <- function(df, Nbins, x_cntr, y_cntr, DeltaX, DeltaY){
   # Find standardized locations Xbin and Ybin 
   Xbin <- ceiling((df$Latitude - x_cntr[1])/DeltaX)
