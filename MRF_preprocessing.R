@@ -5,8 +5,8 @@
 # Author: Lesley Chapman
 # References: MRF.R - Michael Baron
 ###############################
-source('/Volumes/Lesley_Chapman/American_University/Research_Assistantship/Code/3D_MarkovRandomField/MRF_preprocessing_fxn.R')
-#setwd("/Volumes/Lesley_Chapman/American_University/Research_Assistantship/Code/3D_MarkovRandomField")
+source('./Code/3D_MarkovRandomField/MRF_preprocessing_fxn.R')
+#setwd("./Code/3D_MarkovRandomField")
 library(tidyverse)
  
 # Variables
