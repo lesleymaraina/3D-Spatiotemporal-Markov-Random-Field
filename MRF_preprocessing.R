@@ -5,9 +5,9 @@
 # Author: Lesley Chapman
 # References: MRF.R - Michael Baron
 ###############################
-source('./MRF/MRF_preprocessing_fxn.R')
+source('/Volumes/Lesley_Chapman/American_University/Research_Assistantship/Code/3D_MarkovRandomField/MRF_preprocessing_fxn.R')
+#setwd("/Volumes/Lesley_Chapman/American_University/Research_Assistantship/Code/3D_MarkovRandomField")
 library(tidyverse)
-setwd("./Code")
  
 # Variables
 Nbins <- 30
@@ -15,12 +15,15 @@ Nbins <- 30
 # Files
 file <- "./data/Baltimore_911_Calls_for_Service.csv"
 
-# Run code
+# Find delta x and y values
 df_event <- extract_data(file)
+head(max(df_event$Date2))
 delta_values <- find_deltaValues(df_event, Nbins, c(-76.67,-76.57), c(39.27,39.32))
 deltaX <- delta_values$DX
 deltaY <- delta_values$DY
 
+
 # Estimate MRF parameters - 2D king size neighborhood
-x <- find_counts(df_event, Nbins, c(-76.67,-76.57), c(39.27,39.32), deltaX, deltaY)
-x
+g <- find_counts(df_event, Nbins, c(-76.67,-76.57), c(39.27,39.32), deltaX, deltaY)
+g
+
