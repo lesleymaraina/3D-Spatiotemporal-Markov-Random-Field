@@ -6,7 +6,7 @@
 # References: MRF.R - Michael Baron
 ###############################
 library(tidyverse)
-setwd("/Volumes/Lesley_Chapman/American_University/Research_Assistantship/Code")
+setwd("./Research_Assistantship/Code")
 
 '
 Extract following from dataset:
