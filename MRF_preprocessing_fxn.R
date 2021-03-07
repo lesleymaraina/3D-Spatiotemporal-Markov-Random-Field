@@ -6,7 +6,7 @@
 # References: MRF.R - Michael Baron
 ###############################
 library(tidyverse)
-setwd("./Research_Assistantship/Code")
+setwd("/Volumes/Lesley_Chapman/American_University/Research_Assistantship/Code/3D_MarkovRandomField")
 
 '
 Extract following from dataset:
@@ -23,6 +23,7 @@ output
 ------
 dataframe listing: date, latitude, longitude
 '
+
 
 extract_data <- function(file) {
   df <- readr::read_csv(file)
@@ -41,8 +42,8 @@ extract_data <- function(file) {
     mutate(Longitude = as.numeric(Longitude)) %>%
     drop_na() -> df
   
-  # Recode Date, Longitude, Latitude
-  df <- transform(df,Date2 = as.numeric(factor(Date)))
+  ## Recode Date, Longitude, Latitude
+ df <- transform(df,Date_adj = as.numeric(factor(Date)))
   # df <- transform(df,Latitude2 = as.numeric(factor(Latitude)))
   # df <- transform(df,Longitude2 = as.numeric(factor(Longitude)))
 
@@ -50,19 +51,19 @@ extract_data <- function(file) {
 }
 
 # return_coor <- function(df, lat_1, lat_2, lon_1, lon_2) {
-#   df %>% 
+#   df %>%
 #     mutate(Latitude = as.numeric(Latitude)) %>%
 #     mutate_at("Latitude", funs(round(., 2))) %>%
 #     mutate(Longitude = as.numeric(Longitude)) %>%
 #     mutate_at("Longitude", funs(round(., 2))) %>%
 #     select(Latitude,Longitude,Latitude2,Longitude2)-> df
-#   
+# 
 #   df <- df[!duplicated(df), ]
-#   
+# 
 #   head(df)
 # 
 #   # lat <- ifelse(grepl(lat_1 == df$Latitude, df$Latitude2, lat_1))
-#   #               
+#   #
 #   # lat
 # }
 
@@ -116,15 +117,26 @@ find_counts <- function(df, Nbins, x_cntr, y_cntr, DeltaX, DeltaY){
   # Capture the square in which each event has occured
   # The following represents squares in the lattice
   # Need to account for every square in which an event has occured
-  Xbin <- ceiling((df$Latitude - x_cntr[1])/DeltaX)
-  Ybin <- ceiling((df$Longitude - y_cntr[1])/DeltaY)
-  Tbin <- df$Date2 - min(df$Date2) + 1
+  Xbin <- ceiling((df$Longitude - x_cntr[1])/DeltaX)
+  Ybin <- ceiling((df$Latitude - y_cntr[1])/DeltaY)
+  Tbin <- df$Date_adj - min(df$Date_adj) + 1
   Ndays <- max(Tbin)
   
-  g <- cbind(Xbin, Ybin, Tbin)
-  g <- as.data.frame(g)
-  return(head(g))
-
+  Xbin_adj <- transform(as.numeric(factor(Xbin)))
+  Ybin_adj <- transform(as.numeric(factor(Ybin)))
+  df_bin <- as.data.frame(cbind(Xbin_adj,Xbin_adj, Tbin))
+  df_bin <- df_bin %>% 
+    add_column(Z=0) %>%
+    expand_grid(Xbin_adj,Ybin_adj,Tbin)
+    # arrange(Tbin)
+  #df_bin2 <- expand.grid(Xbin_adj,Ybin_adj,Tbin)
+  #df_bin2 <- df_bin %>% expand(Xbin_adj,Ybin_adj,Tbin)
+  #d <- as.data.frame(df_bin2)
+  #write.csv(x=d, file="/Volumes/Lesley_Chapman/American_University/Research_Assistantship/Code/data/bin_combine.csv")
+  return(head(df_bin))
+  
+  
+  
   Nlocations = Nbins*Nbins
   Events = rep(0, Ndays*Nlocations)
   dim(Events) = c( Ndays, Nbins, Nbins )
@@ -133,26 +145,26 @@ find_counts <- function(df, Nbins, x_cntr, y_cntr, DeltaX, DeltaY){
   #Transform matrix into X and Y vectors
   LocationX = rep(0,Nlocations)
   LocationY = LocationX
-
+  
   for (i in 1:Nbins){
     LocationX[(Nbins*(i-1)+1) : (Nbins*i)] = i
     LocationY[(Nbins*(i-1)+1) : (Nbins*i)] = seq(1,Nbins)
   }
-
+  
   # Neighboring locations
   i0 = seq(2,(Nbins-1));   # The point itself
   i1 = seq(1,(Nbins-2));   # Its left or bottom neighbor
   i2 = seq(3,Nbins);       # Its right or top neighbor
-
-
+  
+  
   # Define the 3D array:
   for (i in IndexEvents){
     Events[ Tbin[i], Xbin[i], Ybin[i] ] = 1
   }
-
+  
   # Consider each day, save the logistic regression coefficients
   Parameters = matrix(rep(0, Ndays*10),Ndays,10)
-
+  
   for (t in 1:Ndays){
     DayEvents = Events[t,,];       # Nbins*Nbins matrix of 0s and 1s
     # Define 10 Delta-statistics for each location,
@@ -160,16 +172,16 @@ find_counts <- function(df, Nbins, x_cntr, y_cntr, DeltaX, DeltaY){
     
     # Using each location as is...
     N0  = DayEvents[i0,i0]
-    N1 = (DayEvents[i0,i0]*df$Date2)*(DayEvents[i0,i1]*(df$Date2+1))
-    N2     = (DayEvents[i0,i0]*df$Date2)*(DayEvents[i0,i2]*(df$Date2+1))
-    N3     = (DayEvents[i0,i0]*df$Date2)*(DayEvents[i1,i0]*(df$Date2+1))
-    N4    = (DayEvents[i0,i0]*df$Date2)*(DayEvents[i2,i0]*(df$Date2+1))
+    N1 = (DayEvents[i0,i0]*df$Date_adj)*(DayEvents[i0,i1]*(df$Date_adj+1))
+    N2     = (DayEvents[i0,i0]*df$Date_adj)*(DayEvents[i0,i2]*(df$Date_adj+1))
+    N3     = (DayEvents[i0,i0]*df$Date_adj)*(DayEvents[i1,i0]*(df$Date_adj+1))
+    N4    = (DayEvents[i0,i0]*df$Date_adj)*(DayEvents[i2,i0]*(df$Date_adj+1))
     N5    = DayEvents[i0,i0]*(DayEvents[i0,i2]*DayEvents[i1,i0] + DayEvents[i2,i0]*DayEvents[i2,i2] + DayEvents[i0,i1]*DayEvents[i1,i1])
     N6   = DayEvents[i0,i0]*(DayEvents[i0,i1]*DayEvents[i2,i0] + DayEvents[i0,i2]*DayEvents[i2,i2] + DayEvents[i1,i0]*DayEvents[i1,i1])
     N7  = DayEvents[i0,i0]*(DayEvents[i0,i1]*DayEvents[i1,i0] + DayEvents[i0,i2]*DayEvents[i2,i1] + DayEvents[i0,i2]*DayEvents[i1,i2])
     N8   = DayEvents[i0,i0]*(DayEvents[i0,i2]*DayEvents[i2,i0] + DayEvents[i0,i1]*DayEvents[i2,i1] + DayEvents[i1,i0]*DayEvents[i1,i2])
     N9  = DayEvents[i0,i0]*(DayEvents[i0,i2]*DayEvents[i2,i0]*DayEvents[i2,i2] + DayEvents[i0,i1]*DayEvents[i2,i0]*DayEvents[i2,i1] +
-                                  DayEvents[i0,i1]*DayEvents[i1,i0]*DayEvents[i1,i1] + DayEvents[i0,i2]*DayEvents[i1,i0]*DayEvents[i1,i2])
+                              DayEvents[i0,i1]*DayEvents[i1,i0]*DayEvents[i1,i1] + DayEvents[i0,i2]*DayEvents[i1,i0]*DayEvents[i1,i2])
     
     # Replacing each location with the opposite...
     n0  = (1-DayEvents[i0,i0])
@@ -182,8 +194,8 @@ find_counts <- function(df, Nbins, x_cntr, y_cntr, DeltaX, DeltaY){
     n7  = (1-DayEvents[i0,i0])*(DayEvents[i0,i1]*DayEvents[i1,i0] + DayEvents[i0,i2]*DayEvents[i2,i1] + DayEvents[i0,i2]*DayEvents[i1,i2])
     n8   = (1-DayEvents[i0,i0])*(DayEvents[i0,i2]*DayEvents[i2,i0] + DayEvents[i0,i1]*DayEvents[i2,i1] + DayEvents[i1,i0]*DayEvents[i1,i2])
     n9  = (1-DayEvents[i0,i0])*(DayEvents[i0,i2]*DayEvents[i2,i0]*DayEvents[i2,i2] + DayEvents[i0,i1]*DayEvents[i2,i0]*DayEvents[i2,i1] +
-                                      DayEvents[i0,i1]*DayEvents[i1,i0]*DayEvents[i1,i1] + DayEvents[i0,i2]*DayEvents[i1,i0]*DayEvents[i1,i2])
-
+                                  DayEvents[i0,i1]*DayEvents[i1,i0]*DayEvents[i1,i1] + DayEvents[i0,i2]*DayEvents[i1,i0]*DayEvents[i1,i2])
+    
     # And taking differences = Delta-statistics...
     D0  = -as.numeric(as.vector(Nalpha - nalpha))
     D1 = -as.numeric(as.vector(Nlambda - nlambda))
@@ -195,18 +207,15 @@ find_counts <- function(df, Nbins, x_cntr, y_cntr, DeltaX, DeltaY){
     D7  = -as.numeric(as.vector(Ntheta - ntheta))
     D8   = -as.numeric(as.vector(Niota - niota))
     D9  = -as.numeric(as.vector(Nkappa - nkappa))
-
+    
     EventResponse = as.factor(Nalpha);
-
+    
     logreg = glm( EventResponse ~ D0 + D1 + D2
                   + D3 + D4 + D5 + D6 + D7 + D8 + D9,
                   family="binomial",
                   control=list(maxit = 500) )
-
+    
     Parameters[t,] = coef(logreg)[2:11]
   }
-
+  
 }
-
-
-

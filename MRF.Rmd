@@ -1,0 +1,112 @@
+---
+title: "MRF [original]"
+output: html_notebook
+---
+
+
+
+```{r}
+setwd("/Volumes/Lesley_Chapman/American_University/Research_Assistantship/Code")
+BALT = read.csv("./data/Baltimore_911_Calls_for_Service.csv")
+
+
+
+# BALT = BALT[1:999999,]            # Only for coding speed
+
+# Keep  "callDateTime" "priority" "location"       
+# Erase "district" "description" "callNumber" "incidentLocation"
+           
+BALT = BALT[ , (names(BALT) %in% c("callDateTime", "priority", "location"))]
+
+Ntotal = dim(BALT)[1]           # Ntotal = 2831903 calls
+
+B = na.omit(BALT)
+
+#B$month = as.numeric(substr(B$callDateTime,start=1,stop=2))
+#B$day   = as.numeric(substr(B$callDateTime,start=4,stop=5))
+#B$year  = as.numeric(substr(B$callDateTime,start=7,stop=10))
+#B$hour  = as.numeric(substr(B$callDateTime,start=12,stop=13))
+#B$min   = as.numeric(substr(B$callDateTime,start=15,stop=16))
+#B$sec   = as.numeric(substr(B$callDateTime,start=18,stop=19))			# But sec = 0 always
+#B$ampm  = substr(B$callDateTime,start=21,stop=22)
+#B$hour = B$hour*(B$hour < 12) + 12*(B$hour < 12 & B$ampm=="PM") + 12*(B$hour == 12 & B$ampm=="PM")
+#B$time = 60*B$min + 3600*B$hour
+
+B$Day = as.Date(B$callDateTime,format="%m/%d/%Y")
+B$t = as.numeric(B$Day)
+
+# Check for any gaps in timeline
+for (day in min(B$t):max(B$t)){ 
+   if (sum(B$t==day)<10){ print(paste("Gap in timeline!!! Only",
+         sum(B$t==day),"entries on day",day)) } 
+                              }
+ 
+# LATITUDE and LONGITUDE - from B$location of type " (lat,long) "
+position1 = regexpr(",",B$location);    # Character position of ","
+position2 = regexpr(")",B$location);    # Character position of ")"
+
+B$Y = as.numeric(substr(B$location, 2, position1-1))              # Y = Latitude
+B$X = as.numeric(substr(B$location, position1+1, position2-1))    # X = Longitude
+
+# Erase "callDateTime" "location"     "hour"         "min"          "sec"          "ampm"     
+# keep = c("year","month","day","time","Y","X","priority")
+
+```
+
+Dates are not numbered from 1-[highest unique number]
+```{r}
+keep = c("t","X","Y","priority")
+B = B[ , (names(B) %in% keep)]
+B = na.omit(B)
+head(B)
+```
+My strategy for converting dates:
+df <- transform(df,Date_adj = as.numeric(factor(Date)))
+
+
+##Check the units for Xbin and Ybin
+Do the values have the order of 1,2,3....?
+```{r, warning = FALSE}
+h = 3    # h IQRs
+y1 = quantile(B$Y,.25) - h*IQR(B$Y)
+y2 = quantile(B$Y,.75) + h*IQR(B$Y)
+x1 = quantile(B$X,.25) - h*IQR(B$X)
+x2 = quantile(B$X,.75) + h*IQR(B$X)
+
+Z = as.numeric(B$Y > y1 & B$Y < y2 & B$X > x1 & B$X < x2)
+
+B = B[Z==1,]
+
+B$level = 1*( B$priority=="Non-Emergency") + 3*( B$priority=="Low") + 4*( B$priority=="Medium") + 2*( B$priority=="High") + 6*( B$priority=="Emergency") 
+# 1 = black, 2 = red, 3 = green, 4 = blue, 6 = maroon
+
+plot(B$X, B$Y,xlim=c(x1,x2),ylim=c(y1,y2),col=B$level, pch=20)
+
+# Baltimore center
+xx = c(-76.67,-76.57); yy = c(39.27,39.32);
+
+plot(B$X, B$Y,xlim=xx,ylim=yy)
+points(B$X, B$Y,xlim=xx,ylim=yy,col=B$level, pch=20)
+lines(xx,c(1,1)*yy[1] ,lwd=3); lines(xx,c(1,1)*yy[2] ,lwd=3); lines(xx[1]*c(1,1),yy ,lwd=3); lines(xx[2]*c(1,1),yy ,lwd=3);
+
+# Grid
+Nbins = 30; DeltaX = (xx[2]-xx[1])/(Nbins +1); DeltaY = (yy[2]-yy[1])/(Nbins +1);
+
+for (k in 0 : (Nbins )){ lines(xx,c(1,1)*(yy[1]+k*DeltaY)); lines(c(1,1)*(xx[1]+k*DeltaX),yy); }
+lines(xx,c(1,1)*yy[1] ,lwd=3); lines(xx,c(1,1)*yy[2] ,lwd=3); lines(xx[1]*c(1,1),yy ,lwd=3); lines(xx[2]*c(1,1),yy ,lwd=3);
+B$Y
+```
+
+```{r}
+# Find standardized locations Xbin and Ybin 
+Xbin = ceiling((B$X - xx[1])/DeltaX);
+Ybin = ceiling((B$Y - yy[1])/DeltaY);
+Tbin = B$t - min(B$t) + 1;            # standardized time
+Ndays   = max(Tbin)
+Xbin
+```
+
+```{r}
+min(Xbin)
+max(Xbin)
+```

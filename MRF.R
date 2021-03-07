@@ -3,6 +3,7 @@
 setwd("/Volumes/Lesley_Chapman/American_University/Research_Assistantship/Code")
 BALT = read.csv("./data/Baltimore_911_Calls_for_Service.csv")
 
+
 # BALT = BALT[1:999999,]            # Only for coding speed
 
 # Keep  "callDateTime" "priority" "location"       
@@ -32,7 +33,7 @@ for (day in min(B$t):max(B$t)){
    if (sum(B$t==day)<10){ print(paste("Gap in timeline!!! Only",
          sum(B$t==day),"entries on day",day)) } 
                               }
-
+ 
 # LATITUDE and LONGITUDE - from B$location of type " (lat,long) "
 position1 = regexpr(",",B$location);    # Character position of ","
 position2 = regexpr(")",B$location);    # Character position of ")"
@@ -46,7 +47,7 @@ B$X = as.numeric(substr(B$location, position1+1, position2-1))    # X = Longitud
 keep = c("t","X","Y","priority")
 B = B[ , (names(B) %in% keep)]
 B = na.omit(B)
-
+head(B)
 # Delete location outliers, those outside of h IQRs from Q1 and Q3
 
 h = 3    # h IQRs
@@ -76,8 +77,7 @@ Nbins = 30; DeltaX = (xx[2]-xx[1])/(Nbins +1); DeltaY = (yy[2]-yy[1])/(Nbins +1)
 
 for (k in 0 : (Nbins )){ lines(xx,c(1,1)*(yy[1]+k*DeltaY)); lines(c(1,1)*(xx[1]+k*DeltaX),yy); }
 lines(xx,c(1,1)*yy[1] ,lwd=3); lines(xx,c(1,1)*yy[2] ,lwd=3); lines(xx[1]*c(1,1),yy ,lwd=3); lines(xx[2]*c(1,1),yy ,lwd=3);
-DeltaX
-DeltaY
+B$Y
 
 #######################################################################
 ### Estimate MRF parameters - 2D king size neighborhood ###############
@@ -88,14 +88,16 @@ Xbin = ceiling((B$X - xx[1])/DeltaX);
 Ybin = ceiling((B$Y - yy[1])/DeltaY);
 Tbin = B$t - min(B$t) + 1;            # standardized time
 Ndays   = max(Tbin)
-
+Xbin
 
 ## Create a 3-dimensional binary array in (X, Y, Time)
 Events = rep(0, Ndays*Nlocations)
 dim(Events) = c( Ndays, Nbins, Nbins )
+df2 <- as.vector(as.matrix(Events))
+unique(df2)
 
 IndexEvents = which( Xbin >= 1 & Xbin <= Nbins & Ybin >= 1 & Ybin <= Nbins );
-Xbin
+IndexEvents
 
 Nlocations = Nbins*Nbins;    # The 1st and the last rows and columns are
                               # used only to compete neigborhoods
@@ -115,7 +117,6 @@ LocationX
  i0 = seq(2,(Nbins-1));   # The point itself
  i1 = seq(1,(Nbins-2));   # Its left or bottom neighbor
  i2 = seq(3,Nbins);       # Its right or top neighbor
-i2
 
 # Define the 3D array:
 for (i in IndexEvents){ Events[ Tbin[i], Xbin[i], Ybin[i] ] = 1 }
@@ -128,6 +129,8 @@ Parameters
 
 for (t in 1:Ndays){
   DayEvents = Events[t,,];       # Nbins*Nbins matrix of 0s and 1s 
+  df2 <- as.vector(as.matrix(DayEvents))
+  print(unique(df2))
   # Define 10 Delta-statistics for each location, 
   # Each of them is a (Nbins-2)*(Nbins-2) matrix of 0s and 1s
 
