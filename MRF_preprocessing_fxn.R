@@ -43,29 +43,13 @@ extract_data <- function(file) {
     drop_na() -> df
   
   ## Recode Date, Longitude, Latitude
- df <- transform(df,Date_adj = as.numeric(factor(Date)))
+  df <- transform(df,Date_adj = as.numeric(factor(Date)))
   # df <- transform(df,Latitude2 = as.numeric(factor(Latitude)))
   # df <- transform(df,Longitude2 = as.numeric(factor(Longitude)))
-
+  
   return(df)
 }
 
-# return_coor <- function(df, lat_1, lat_2, lon_1, lon_2) {
-#   df %>%
-#     mutate(Latitude = as.numeric(Latitude)) %>%
-#     mutate_at("Latitude", funs(round(., 2))) %>%
-#     mutate(Longitude = as.numeric(Longitude)) %>%
-#     mutate_at("Longitude", funs(round(., 2))) %>%
-#     select(Latitude,Longitude,Latitude2,Longitude2)-> df
-# 
-#   df <- df[!duplicated(df), ]
-# 
-#   head(df)
-# 
-#   # lat <- ifelse(grepl(lat_1 == df$Latitude, df$Latitude2, lat_1))
-#   #
-#   # lat
-# }
 
 '
 Generate delta values
@@ -96,12 +80,12 @@ find_deltaValues <- function(file, h, x_cntr, y_cntr){
   y2 = quantile(df$Longitude,.75) + h*IQR(df$Longitude)
   x1 = quantile(df$Latitude,.25) - h*IQR(df$Latitude)
   x2 = quantile(df$Latitude,.75) + h*IQR(df$Latitude)
-
+  
   # Generate Delta Values
   Nbins = 30
   DeltaX = (x_cntr[2]-x_cntr[1])/(Nbins +1)
   DeltaY = (y_cntr[2]-y_cntr[1])/(Nbins +1)
-
+  
   delta_values <- list(DX = DeltaX, DY = DeltaY)
   return(delta_values)
 }
@@ -109,9 +93,86 @@ find_deltaValues <- function(file, h, x_cntr, y_cntr){
 
 
 #######################################################################
-### Estimate MRF parameters - 2D king size neighborhood ###############
+### Estimate MRF parameters - 3D neighborhood ###############
 #######################################################################
- 
+'
+Find all possible combinations of Xbin, Ybin and Tbin
+'
+
+generate_bins <- function(df, Nbins){
+  # Import dataframe and recode: date, latitude, and longitude
+  df %>%
+    #Sort Dates in ascending order
+    mutate(Date = as.Date(Date, "%m/%d/%Y")) %>%
+    arrange(Date) -> city_df
+
+  city_df$Latitude <- ceiling(city_df$Latitude)
+  city_df$Longitude <- ceiling(city_df$Longitude)
+  
+  #Recode date, latitude, and longitude
+  city_df <- transform(city_df,Date_adj = as.numeric(factor(Date)))
+  city_df <- transform(city_df,Lat = as.numeric(factor(Latitude)))
+  city_df <- transform(city_df,Lon = as.numeric(factor(Longitude)))
+  city_df %>% select(-c(Date, Latitude, Longitude)) -> city_df
+  
+  # Create dataframe with all combinations of Xbin, Ybin, Tbin
+  Ndays <- max(city_df$Date_adj)
+  N = Ndays*Nbins*Nbins
+  N
+  
+  T = rep(0,N)
+  X=T
+  Y=T
+  data.frame(T,X,Y)
+  
+  for (t in 1:Ndays){
+    T[((t-1)*Nbins*Nbins + 1) : (t*Nbins*Nbins)]  = t
+    for (x in 1:Nbins) {
+      X[((t-1)*Nbins*Nbins + (x-1)*Nbins + 1) : ((t-1)*Nbins*Nbins + x*Nbins)] = x #Give all Values for X
+      Y[((t-1)*Nbins*Nbins + (x-1)*Nbins + 1) : ((t-1)*Nbins*Nbins + x*Nbins)] = 1:Nbins #Give all Values for Y
+    }
+  }
+  
+  null_df <- data.frame(T,X,Y)
+  
+  null_df %>%
+    rename(Date_adj = T) %>%
+    left_join(city_df, by=c('Date_adj')) %>%
+    mutate(Z = ifelse(X == Lat & Y == Lon, 1, 0)) %>%
+    rename(Tbin = Date_adj) %>%
+    rename(Xbin = X) %>%
+    rename(Ybin = Y) %>%
+    select(-c(Lat, Lon))-> x
+  
+  return(head(x))
+  
+}
+
+xytz_bin_test <- function(n, bin){
+  Ndays = n # Fill this in based on computation in MRF code
+  Nbins = bin
+  
+  N = Ndays*Nbins*Nbins
+  N
+  
+  T = rep(0,N)
+  X=T
+  Y=T
+  data.frame(T,X,Y)
+  
+  for (t in 1:Ndays){
+    T[((t-1)*Nbins*Nbins + 1) : (t*Nbins*Nbins)]  = t
+    for (x in 1:Nbins) {
+      X[((t-1)*Nbins*Nbins + (x-1)*Nbins + 1) : ((t-1)*Nbins*Nbins + x*Nbins)] = x #Give all Values for X
+      Y[((t-1)*Nbins*Nbins + (x-1)*Nbins + 1) : ((t-1)*Nbins*Nbins + x*Nbins)] = y #Give all Values for Y
+    }
+  }
+  
+  Z = rep(0,N)
+  Z[(t-1)*Nbins^2 + (x-1)*Nbins + y] = 1
+  return(head(data.frame(T,X,Y,Z)))
+}
+
 find_counts <- function(df, Nbins, x_cntr, y_cntr, DeltaX, DeltaY){
   # Xbin and Ybin
   # Capture the square in which each event has occured
@@ -122,13 +183,12 @@ find_counts <- function(df, Nbins, x_cntr, y_cntr, DeltaX, DeltaY){
   Tbin <- df$Date_adj - min(df$Date_adj) + 1
   Ndays <- max(Tbin)
   
-  Xbin_adj <- transform(as.numeric(factor(Xbin)))
-  Ybin_adj <- transform(as.numeric(factor(Ybin)))
-  df_bin <- as.data.frame(cbind(Xbin_adj,Xbin_adj, Tbin))
+  Xbin_adj <- data.frame(transform(as.numeric(factor(Xbin))))
+  Ybin_adj <- data.frame(transform(as.numeric(factor(Ybin))))
+  df_bin <- cbind.data.frame(Xbin_adj,Ybin_adj, Tbin)
   df_bin <- df_bin %>% 
-    add_column(Z=0) %>%
-    expand_grid(Xbin_adj,Ybin_adj,Tbin)
-    # arrange(Tbin)
+    add_column(Z=0) 
+  # arrange(Tbin)
   #df_bin2 <- expand.grid(Xbin_adj,Ybin_adj,Tbin)
   #df_bin2 <- df_bin %>% expand(Xbin_adj,Ybin_adj,Tbin)
   #d <- as.data.frame(df_bin2)
