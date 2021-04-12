@@ -188,18 +188,15 @@ find_counts <- function(df, Nbins, x_cntr, y_cntr, DeltaX, DeltaY){
   df_bin <- cbind.data.frame(Xbin_adj,Ybin_adj, Tbin)
   df_bin <- df_bin %>% 
     add_column(Z=0) 
-  # arrange(Tbin)
-  #df_bin2 <- expand.grid(Xbin_adj,Ybin_adj,Tbin)
-  #df_bin2 <- df_bin %>% expand(Xbin_adj,Ybin_adj,Tbin)
-  #d <- as.data.frame(df_bin2)
-  #write.csv(x=d, file="/Volumes/Lesley_Chapman/American_University/Research_Assistantship/Code/data/bin_combine.csv")
-  return(head(df_bin))
+  df_bin <- df_bin %>% rename(Xbin = X_data)
+  df_bin <- df_bin %>% rename(Ybin = X_data.1)
+   return(head(df_bin))
   
   
   
   Nlocations = Nbins*Nbins
-  Events = rep(0, Ndays*Nlocations)
-  dim(Events) = c( Ndays, Nbins, Nbins )
+  Z = rep(0, Ndays*Nlocations)
+  dim(Z) = c( Ndays, Nbins, Nbins )
   IndexEvents = which( Xbin >= 1 & Xbin <= Nbins & Ybin >= 1 & Ybin <= Nbins )
   
   #Transform matrix into X and Y vectors
@@ -219,29 +216,38 @@ find_counts <- function(df, Nbins, x_cntr, y_cntr, DeltaX, DeltaY){
   
   # Define the 3D array:
   for (i in IndexEvents){
-    Events[ Tbin[i], Xbin[i], Ybin[i] ] = 1
+    Z[ Tbin[i], Xbin[i], Ybin[i] ] = 1
   }
   
   # Consider each day, save the logistic regression coefficients
   Parameters = matrix(rep(0, Ndays*10),Ndays,10)
   
   for (t in 1:Ndays){
-    DayEvents = Events[t,,];       # Nbins*Nbins matrix of 0s and 1s
+    DayEvents = Z[t,,];       # Nbins*Nbins matrix of 0s and 1s
     # Define 10 Delta-statistics for each location,
     # Each of them is a (Nbins-2)*(Nbins-2) matrix of 0s and 1s
     
     # Using each location as is...
-    N0  = DayEvents[i0,i0]
-    N1 = (DayEvents[i0,i0]*df$Date_adj)*(DayEvents[i0,i1]*(df$Date_adj+1))
-    N2     = (DayEvents[i0,i0]*df$Date_adj)*(DayEvents[i0,i2]*(df$Date_adj+1))
-    N3     = (DayEvents[i0,i0]*df$Date_adj)*(DayEvents[i1,i0]*(df$Date_adj+1))
-    N4    = (DayEvents[i0,i0]*df$Date_adj)*(DayEvents[i2,i0]*(df$Date_adj+1))
-    N5    = DayEvents[i0,i0]*(DayEvents[i0,i2]*DayEvents[i1,i0] + DayEvents[i2,i0]*DayEvents[i2,i2] + DayEvents[i0,i1]*DayEvents[i1,i1])
-    N6   = DayEvents[i0,i0]*(DayEvents[i0,i1]*DayEvents[i2,i0] + DayEvents[i0,i2]*DayEvents[i2,i2] + DayEvents[i1,i0]*DayEvents[i1,i1])
-    N7  = DayEvents[i0,i0]*(DayEvents[i0,i1]*DayEvents[i1,i0] + DayEvents[i0,i2]*DayEvents[i2,i1] + DayEvents[i0,i2]*DayEvents[i1,i2])
-    N8   = DayEvents[i0,i0]*(DayEvents[i0,i2]*DayEvents[i2,i0] + DayEvents[i0,i1]*DayEvents[i2,i1] + DayEvents[i1,i0]*DayEvents[i1,i2])
-    N9  = DayEvents[i0,i0]*(DayEvents[i0,i2]*DayEvents[i2,i0]*DayEvents[i2,i2] + DayEvents[i0,i1]*DayEvents[i2,i0]*DayEvents[i2,i1] +
-                              DayEvents[i0,i1]*DayEvents[i1,i0]*DayEvents[i1,i1] + DayEvents[i0,i2]*DayEvents[i1,i0]*DayEvents[i1,i2])
+    N0  = Z[i0,i0,i0] # Take sum here?
+    N1 = sum(Z[1:(N-Nbins*Nbins-Nbins)] * Z[(1 + Nbins*Nbins + Nbins) : N]) #North East
+    N2 = sum(Z[1:(N-Nbins*Nbins-Nbins)] * Z[(1 + Nbins*Nbins + 1) : N]) #North
+    N3 = sum(Z[1:(N-Nbins*Nbins-Nbins)] * Z[(1 + Nbins*Nbins + 1 + Nbins) : N]) #North West
+    N4 = sum(Z[1:(N-Nbins*Nbins-Nbins)] * Z[(1 + Nbins*Nbins - Nbins) : N]) #West
+    N5 = sum(Z[1:(N-Nbins*Nbins-Nbins)] * Z[(1 + Nbins*Nbins) : N]) #Same location
+    N7 = sum(Z[1:(N-Nbins*Nbins-Nbins)] * Z[(Nbins*Nbins + Nbins) : (N-1)]) #East
+    N7 = sum(Z[1:(N-Nbins*Nbins-Nbins)] * Z[(Nbins*Nbins - Nbins) : (N-1)]) #Southwest
+    N8 = sum(Z[1:(N-Nbins*Nbins-Nbins)] * Z[(Nbins*Nbins) : (N-1)]) #South
+    N9 = sum(Z[1:(N-Nbins*Nbins-Nbins)] * Z[(Nbins*Nbins + Nbins) : (N-1)]) #Southeast 
+    # N1 = (DayEvents[i0,i0]*df$Date_adj)*(DayEvents[i0,i1]*(df$Date_adj+1))
+    # N2     = (DayEvents[i0,i0]*df$Date_adj)*(DayEvents[i0,i2]*(df$Date_adj+1))
+    # N3     = (DayEvents[i0,i0]*df$Date_adj)*(DayEvents[i1,i0]*(df$Date_adj+1))
+    # N4    = (DayEvents[i0,i0]*df$Date_adj)*(DayEvents[i2,i0]*(df$Date_adj+1))
+    #N5    = DayEvents[i0,i0]*(DayEvents[i0,i2]*DayEvents[i1,i0] + DayEvents[i2,i0]*DayEvents[i2,i2] + DayEvents[i0,i1]*DayEvents[i1,i1])
+    # N6   = DayEvents[i0,i0]*(DayEvents[i0,i1]*DayEvents[i2,i0] + DayEvents[i0,i2]*DayEvents[i2,i2] + DayEvents[i1,i0]*DayEvents[i1,i1])
+    # N7  = DayEvents[i0,i0]*(DayEvents[i0,i1]*DayEvents[i1,i0] + DayEvents[i0,i2]*DayEvents[i2,i1] + DayEvents[i0,i2]*DayEvents[i1,i2])
+    # N8   = DayEvents[i0,i0]*(DayEvents[i0,i2]*DayEvents[i2,i0] + DayEvents[i0,i1]*DayEvents[i2,i1] + DayEvents[i1,i0]*DayEvents[i1,i2])
+    #N9  = DayEvents[i0,i0]*(DayEvents[i0,i2]*DayEvents[i2,i0]*DayEvents[i2,i2] + DayEvents[i0,i1]*DayEvents[i2,i0]*DayEvents[i2,i1] +
+    #            DayEvents[i0,i1]*DayEvents[i1,i0]*DayEvents[i1,i1] + DayEvents[i0,i2]*DayEvents[i1,i0]*DayEvents[i1,i2])
     
     # Replacing each location with the opposite...
     n0  = (1-DayEvents[i0,i0])

@@ -23,15 +23,6 @@ deltaX <- delta_values$DX
 deltaY <- delta_values$DY
 deltaY
 
-#030721 Code: 
-xytz_bin_test(5,3)
-
-# Create Z score according to input data generate_bins() function
-start.time <- Sys.time()
-generate_bins(df_event, Nbins)
-end.time <- Sys.time()
-time.taken <- end.time - start.time
-time.taken
 
 # Estimate MRF parameters - 2D king size neighborhood
 x <- find_counts(df_event, Nbins, c(-76.67,-76.57), c(39.27,39.32), deltaX, deltaY)
